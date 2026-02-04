@@ -1,0 +1,50 @@
+name: Daily Workflow
+
+on:
+  schedule:
+    # Runs daily at 9:00 AM UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect PR data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Collecting PR data..."
+          node scripts/list-my-prs.js
+
+      - name: Generate PR report with Gemini
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: ./scripts/generate-report.sh
+
+      - name: Send report to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: node scripts/send-to-slack.js
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-pr-report
+          path: |
+            pr-report.json
+            daily-report.md
+          retention-days: 30
