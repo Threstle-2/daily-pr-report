@@ -2,8 +2,8 @@ name: Daily Workflow
 
 on:
   schedule:
-    # Runs daily at 3:30 PM UTC
-    - cron: '30 15 * * *'
+    # Runs daily at 9:15 AM UTC+1 (8:15 AM UTC)
+    - cron: '15 8 * * *'
   workflow_dispatch:
 
 jobs:
