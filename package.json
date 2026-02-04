@@ -1,0 +1,25 @@
+{
+  "name": "daily-pr-report",
+  "version": "1.0.0",
+  "description": "Daily PR report generator",
+  "main": "index.js",
+  "scripts": {
+    "list-prs": "node scripts/list-my-prs.js",
+    "generate-report": "node scripts/list-my-prs.js && ./scripts/generate-report.sh",
+    "send-to-slack": "node scripts/send-to-slack.js",
+    "full-report": "npm run generate-report && npm run send-to-slack",
+    "list-models": "node scripts/list-models.js"
+  },
+  "keywords": [
+    "github",
+    "pull-requests",
+    "automation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.3.1"
+  }
+}
