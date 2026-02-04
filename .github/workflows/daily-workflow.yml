@@ -25,7 +25,7 @@ jobs:
 
       - name: Collect PR data
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           echo "Collecting PR data..."
           node scripts/list-my-prs.js

@@ -40,7 +40,7 @@ SLACK_WEBHOOK_URL=your_slack_webhook_url
 
 Add the following secrets to your repository (Settings → Secrets and variables → Actions):
 
-- `GITHUB_TOKEN`: Your GitHub personal access token
+- `GH_PAT`: Your GitHub personal access token (note: cannot be named GITHUB_TOKEN due to GitHub's reserved prefix)
 - `GOOGLE_API_KEY`: Your Google AI Studio API key
 - `SLACK_WEBHOOK_URL`: Your Slack incoming webhook URL
 
