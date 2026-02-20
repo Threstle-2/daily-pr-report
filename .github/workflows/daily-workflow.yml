@@ -22,7 +22,7 @@ jobs:
 
       - name: Collect PR data
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           GH_USER: ${{ vars.GH_USER }}
           GH_REPO: ${{ vars.GH_REPO }}
         run: |

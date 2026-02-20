@@ -79,9 +79,9 @@ async function fetchPRActivity(octokit, owner, repo, prNumber) {
 
 async function listMyOpenPRs() {
   // Check for GitHub token
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GH_PAT;
   if (!token) {
-    console.error('Error: GITHUB_TOKEN environment variable is not set');
+    console.error('Error: GH_PAT environment variable is not set');
     process.exit(1);
   }
 
@@ -234,7 +234,7 @@ async function listMyOpenPRs() {
   } catch (error) {
     console.error('Error fetching pull requests:', error.message);
     if (error.status === 401) {
-      console.error('Authentication failed. Please check your GITHUB_TOKEN.');
+      console.error('Authentication failed. Please check your GH_PAT.');
     }
     process.exit(1);
   }
