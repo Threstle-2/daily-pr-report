@@ -100,23 +100,40 @@ async function listMyOpenPRs() {
       console.log(`\nFetching open PRs for: ${targetUser}`);
     }
 
-    // Build search query with optional repo filter
-    let query = `is:pr is:open author:${targetUser}`;
-    if (process.env.GH_REPO) {
-      query += ` repo:${process.env.GH_REPO}`;
-      console.log(`Filtering by repo: ${process.env.GH_REPO}`);
-    }
     console.log(`Checking for activity in the last 24 hours...\n`);
 
-    // Search for open PRs
-    const { data: searchResults } = await octokit.rest.search.issuesAndPullRequests({
-      q: query,
-      sort: 'updated',
-      order: 'desc',
-      per_page: 100
-    });
+    // Fetch open PRs: use pulls API directly for a specific repo (works with private repos),
+    // fall back to search API when no repo filter is set.
+    let items;
+    let repoName;
+    if (process.env.GH_REPO) {
+      repoName = process.env.GH_REPO.trim();
+      const [owner, repo] = repoName.split('/');
+      console.log(`Filtering by repo: ${repoName}`);
+      const { data: pulls } = await octokit.rest.pulls.list({
+        owner,
+        repo,
+        state: 'open',
+        per_page: 100
+      });
+      items = pulls
+        .filter(pr => pr.user.login === targetUser)
+        .map(pr => ({ ...pr, repoName }));
+    } else {
+      const query = `is:pr is:open author:${targetUser}`;
+      const { data: searchResults } = await octokit.rest.search.issuesAndPullRequests({
+        q: query,
+        sort: 'updated',
+        order: 'desc',
+        per_page: 100
+      });
+      items = searchResults.items.map(pr => ({
+        ...pr,
+        repoName: pr.repository_url.split('/').slice(-2).join('/')
+      }));
+    }
 
-    if (searchResults.total_count === 0) {
+    if (items.length === 0) {
       console.log('No open pull requests found.');
       const emptyReport = {
         generatedAt: new Date().toISOString(),
@@ -130,20 +147,20 @@ async function listMyOpenPRs() {
       return;
     }
 
-    console.log(`Found ${searchResults.total_count} open pull request(s):\n`);
+    console.log(`Found ${items.length} open pull request(s):\n`);
 
     // Collect PR data for JSON output
     const reportData = {
       generatedAt: new Date().toISOString(),
       user: targetUser,
-      totalPRs: searchResults.total_count,
+      totalPRs: items.length,
       pullRequests: []
     };
 
     // Process each PR
-    for (let index = 0; index < searchResults.items.length; index++) {
-      const pr = searchResults.items[index];
-      const repoName = pr.repository_url.split('/').slice(-2).join('/');
+    for (let index = 0; index < items.length; index++) {
+      const pr = items[index];
+      const repoName = pr.repoName;
       const [owner, repo] = repoName.split('/');
 
       const daysOpen = getDaysOpen(pr.created_at);
@@ -224,7 +241,7 @@ async function listMyOpenPRs() {
       console.log('');
     }
 
-    console.log(`Total: ${searchResults.total_count} open PR(s)`);
+    console.log(`Total: ${items.length} open PR(s)`);
 
     // Write JSON report to file
     const outputPath = path.join(process.cwd(), 'pr-report.json');
