@@ -1,9 +1,6 @@
 name: Daily Workflow
 
 on:
-  schedule:
-    # Runs daily at 8:00 AM UTC+1 (7:00 AM UTC) - accounts for GitHub Actions delays
-    - cron: '0 7 * * *'
   workflow_dispatch:
 
 jobs:
@@ -26,6 +23,8 @@ jobs:
       - name: Collect PR data
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GH_USER: ${{ vars.GH_USER }}
+          GH_REPO: ${{ vars.GH_REPO }}
         run: |
           echo "Collecting PR data..."
           node scripts/list-my-prs.js

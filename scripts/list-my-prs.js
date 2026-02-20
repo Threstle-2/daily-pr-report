@@ -89,14 +89,28 @@ async function listMyOpenPRs() {
   const octokit = new Octokit({ auth: token });
 
   try {
-    // Get authenticated user
-    const { data: user } = await octokit.rest.users.getAuthenticated();
-    console.log(`\nFetching open PRs for: ${user.login}`);
+    // Determine target user (env override or authenticated user)
+    let targetUser;
+    if (process.env.GH_USER) {
+      targetUser = process.env.GH_USER;
+      console.log(`\nUsing configured user: ${targetUser}`);
+    } else {
+      const { data: user } = await octokit.rest.users.getAuthenticated();
+      targetUser = user.login;
+      console.log(`\nFetching open PRs for: ${targetUser}`);
+    }
+
+    // Build search query with optional repo filter
+    let query = `is:pr is:open author:${targetUser}`;
+    if (process.env.GH_REPO) {
+      query += ` repo:${process.env.GH_REPO}`;
+      console.log(`Filtering by repo: ${process.env.GH_REPO}`);
+    }
     console.log(`Checking for activity in the last 24 hours...\n`);
 
-    // Search for open PRs authored by the authenticated user
+    // Search for open PRs
     const { data: searchResults } = await octokit.rest.search.issuesAndPullRequests({
-      q: `is:pr is:open author:${user.login}`,
+      q: query,
       sort: 'updated',
       order: 'desc',
       per_page: 100
@@ -112,7 +126,7 @@ async function listMyOpenPRs() {
     // Collect PR data for JSON output
     const reportData = {
       generatedAt: new Date().toISOString(),
-      user: user.login,
+      user: targetUser,
       totalPRs: searchResults.total_count,
       pullRequests: []
     };
