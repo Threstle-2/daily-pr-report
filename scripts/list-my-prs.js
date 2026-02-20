@@ -118,6 +118,15 @@ async function listMyOpenPRs() {
 
     if (searchResults.total_count === 0) {
       console.log('No open pull requests found.');
+      const emptyReport = {
+        generatedAt: new Date().toISOString(),
+        user: targetUser,
+        totalPRs: 0,
+        pullRequests: []
+      };
+      const outputPath = path.join(process.cwd(), 'pr-report.json');
+      fs.writeFileSync(outputPath, JSON.stringify(emptyReport, null, 2));
+      console.log(`\nReport saved to: ${outputPath}`);
       return;
     }
 
