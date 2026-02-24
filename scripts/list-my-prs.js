@@ -29,7 +29,18 @@ function getDaysOpen(createdAt) {
 }
 
 // Fetch comments and reviews for a PR
-async function fetchPRActivity(octokit, owner, repo, prNumber) {
+const OTF_REGEX = /bot: Deploy on-the-fly env.*?playplay\/frontend#(\d+)/i;
+
+function detectOtfUrl(texts) {
+  for (const text of texts) {
+    if (!text) continue;
+    const match = text.match(OTF_REGEX);
+    if (match) return `https://fe-${match[1]}-app.playplay.dev/`;
+  }
+  return null;
+}
+
+async function fetchPRActivity(octokit, owner, repo, prNumber, prBody) {
   try {
     // Fetch issue comments (general PR comments)
     const { data: issueComments } = await octokit.rest.issues.listComments({
@@ -60,10 +71,14 @@ async function fetchPRActivity(octokit, owner, repo, prNumber) {
     const recentReviewComments = reviewComments.filter(c => isRecent(c.created_at));
     const recentReviews = reviews.filter(r => isRecent(r.submitted_at));
 
+    const otfUrl = detectOtfUrl([prBody, ...issueComments.map(c => c.body)]);
+
     return {
       issueComments: recentIssueComments,
       reviewComments: recentReviewComments,
       reviews: recentReviews,
+      allReviews: reviews,
+      otfUrl,
       totalRecentActivity: recentIssueComments.length + recentReviewComments.length + recentReviews.length
     };
   } catch (error) {
@@ -72,9 +87,28 @@ async function fetchPRActivity(octokit, owner, repo, prNumber) {
       issueComments: [],
       reviewComments: [],
       reviews: [],
+      allReviews: [],
+      otfUrl: null,
       totalRecentActivity: 0
     };
   }
+}
+
+function computeReviewStatus(draft, allReviews) {
+  if (draft) return 'draft';
+  if (allReviews.length === 0) return 'pending';
+  // Latest review per reviewer wins
+  const latestByReviewer = {};
+  for (const review of allReviews) {
+    if (review.user.type === 'Bot') continue;
+    if (review.state === 'APPROVED' || review.state === 'CHANGES_REQUESTED') {
+      latestByReviewer[review.user.login] = review.state;
+    }
+  }
+  const states = Object.values(latestByReviewer);
+  if (states.includes('CHANGES_REQUESTED')) return 'changes_requested';
+  if (states.length > 0 && states.every(s => s === 'APPROVED')) return 'approved';
+  return 'pending';
 }
 
 async function listMyOpenPRs() {
@@ -173,7 +207,7 @@ async function listMyOpenPRs() {
 
       // Fetch activity
       console.log(`   Fetching recent activity...`);
-      const activity = await fetchPRActivity(octokit, owner, repo, pr.number);
+      const activity = await fetchPRActivity(octokit, owner, repo, pr.number, pr.body);
 
       // Prepare PR data for JSON
       const prData = {
@@ -181,7 +215,10 @@ async function listMyOpenPRs() {
         title: pr.title,
         repository: repoName,
         url: pr.html_url,
-        state: pr.state,
+        draft: pr.draft ?? false,
+        reviewStatus: computeReviewStatus(pr.draft, activity.allReviews),
+        statusChangedInLast24h: activity.reviews.length > 0,
+        otfUrl: activity.otfUrl,
         createdAt: pr.created_at,
         updatedAt: pr.updated_at,
         daysOpen: daysOpen,
